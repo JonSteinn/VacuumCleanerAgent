@@ -15,7 +15,7 @@ The environment is a grid of cells, where each can contain nothing, dirt or an o
 | Turn right | 1 |
 | Go | 1 |
 | Suck | 1 for cells containing dirt, 5 otherwise |
-| Turn off | 1 + D*50 if at home, 100 + D*50 othwerise, where D are remainig dirt |
+| Turn off | 1 + 50D if at home, 100 + 50D othwerise, where D are remainig dirt |
 
 The main function starts a client and we are given an interface for our agent with a initilization method (which gets all information about the environment) and next action method. The server is sent the next action from the client until the simulation is over.
 
