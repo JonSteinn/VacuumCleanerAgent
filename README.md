@@ -4,7 +4,7 @@ Made for a course in AI at Reykjavík University in 2017.
 ## [![Build Status](https://travis-ci.org/JonSteinn/VacuumCleanerAgent.svg?branch=master)](https://travis-ci.org/JonSteinn/VacuumCleanerAgent)
 
 ## Problem
-The problem description can be read in full in [description.pdf](https://github.com/JonSteinn/VacuumCleanerAgent/blob/master/description.pdf). I do not own this assignment.
+The problem description can be read in full in [description.pdf](https://github.com/JonSteinn/VacuumCleanerAgent/raw/master/description.pdf). I do not own this assignment.
 
 The environment is a grid of cells, where each can contain nothing, dirt or an obstacle and we are to implement an agent that, given full knowledge of the environment, can clean all dirt and return to its original position. Cells with dirt can be blocked from the agent due to obstacles. The actions available to the agent and their cost can be seen in the following table.
 
