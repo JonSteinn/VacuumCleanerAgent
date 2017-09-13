@@ -17,6 +17,8 @@ The environment is a grid of cells, where each can contain nothing, dirt or an o
 | Suck | 1 for cells containing dirt, 5 otherwise |
 | Turn off | 1 + D*50 if at home, 100 + D*50 othwerise, where D are remainig dirt |
 
+The main function starts a client and we are given an interface for our agent with a initilization method (which gets all information about the environment) and next action method. The server is sent the next action from the client until the simulation is over.
+
 ## Stats
 Fastest handin that year. Stats can be found [here](https://docs.google.com/spreadsheets/d/1pYKJ_a5K4XxxZ1q8YwL4wYrWxpgpm36-Zy5e_yazva0/edit?usp=sharing).
 
@@ -103,4 +105,92 @@ I borrowed a Graph datastructure, heap and a MST algorithm from Sedgewick and Wa
     └── gradlew.bat
 
 ## Overview of approach
-TODO
+The code is thoroughly tested and all test environments have been set up as unit test so I never actually used the GDLs, server and client during development.
+
+### Agent
+My agent begins by parsing the information sent at start to construct instance of its initial state and environment. It then performs what search is chosen (see below). The results are then stored in a list and fed, one at a time, in each call for next action.
+
+```Java
+/* ****************************** */
+/* Change for different algorithm */
+/* ****************************** */
+Search search =
+        new AStar(env, init);
+//        new UniformCostSearch(env, init);
+//        new BreadthFirstSearch(env, init);
+//        new DepthFirstSearch(env, init);
+```
+
+### Preprocessing
+The first thing I did was to preprocess the environment. I used A* with manhattan distance heuristic to find all reachable dirts from our original position and disregarded those that weren't reachable. I also stored the minimal cost and path of going from A given some orientation O (at A) to B, where A and B are not equal and A and B are any of the reachable dirts or home cell. 
+
+Now we know the best way to travel from one dirt (or home) to any reachable dirt (or home) given any initial direction so this problem has become a choice of which dirt to travel to next, rather than which actions available to the agent, to use next. That is, we have transformed this problem into the traveling salesman problem.
+
+### State
+The state contains the agent's orientation and position as well as the position it has already cleaned.
+
+```Java
+public class State {
+    private Orientation orientation;
+    private Position agentPosition;
+    private Set<Position> cleaned;
+}
+```
+
+### Heuristic
+The heuristic used is the minimal span tree of all the remaining dirty cells along with the home position which to we add the shortest distance from the agent current position (already cleaned) to the MST.
+
+### Heuristic caching
+Since states differ in agent's orientation but the MST does not, we do not want to recalculate it just because of orientation. Therefore we use a cache. Initially empty, whenever we compute the MST for any set of position we cache it and use it for all scenarios with those positions. That is returned and the agent's shortest path to the MST is added to it, which depends on his orientation (while the MST does not).
+
+### A*
+The following shows the A* used in the search. It has been pruned of statistical gatherings and comments. It keeps a closed set which are never added to the frontier if there. Also, if state is already in frontier, we disregard the more expansive node.
+
+```Java
+public class AStar extends Search {
+    public AStar(Environment env, State state) {
+        Set<State> closed = new HashSet<>();
+        PriorityQueue<HeuristicNode> openSet = new PriorityQueue<>(Comparator.comparingInt(HeuristicNode::getF));
+        Map<State, Integer> openTracker = new HashMap<>();
+        openSet.add(new HeuristicNode(null, state, null, 0, env));
+        openTracker.put(state, 0);
+        while (!openSet.isEmpty()) {
+            HeuristicNode current = openSet.poll();
+            openTracker.remove(current.getState());
+            closed.add(current.getState());
+            if (env.isGoalState(current.getState())) {
+                goalNode = current;
+                break;
+            }
+            for (Map.Entry<State, Actions> child : current.getState().getReachableStates(env).entrySet()) {
+                if (!closed.contains(child.getKey())) {
+                    Integer i = openTracker.get(child.getKey());
+                    if (i == null) {
+                        openTracker.put(
+                                child.getKey(),
+                                current.getG() + child.getValue().getCost()
+                        );
+                        openSet.add(new HeuristicNode(
+                                current,
+                                child.getKey(),
+                                child.getValue().getActionList(),
+                                current.getG() + child.getValue().getCost(),
+                                env
+                        ));
+                    } else if (i > current.getG() + child.getValue().getCost()) {
+                        HeuristicNode m = new HeuristicNode(
+                                current,
+                                child.getKey(),
+                                child.getValue().getActionList(),
+                                current.getG() + child.getValue().getCost(),
+                                env);
+                        openSet.remove(m);
+                        openSet.add(m);
+                        openTracker.put(m.getState(), m.getG());
+                    }
+                }
+            }
+        }
+    }
+}
+```
